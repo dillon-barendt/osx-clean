@@ -39,6 +39,12 @@ const PROTECTED_EXACT = new Set([
   path.join(HOME, "Library", "Group Containers"),
   path.join(HOME, "Library", "Developer"),
   path.join(HOME, ".Trash"),
+  "/tmp",
+  "/private/tmp",
+  "/var/tmp",
+  "/private/var/tmp",
+  "/var/folders",
+  "/private/var/folders",
 ]);
 
 const ALLOWED_ROOTS = [

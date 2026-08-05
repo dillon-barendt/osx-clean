@@ -90,8 +90,8 @@ export const duplicates: Category = {
   id: "duplicates",
   label: "Duplicate files",
   group: "risky",
-  description: "Potential duplicate files in common user folders.",
-  warning: "This is a conservative name-and-size duplicate pass, not a byte-for-byte dedupe tool.",
+  description: "Exact duplicate files in common user folders.",
+  warning: "Matches file size and SHA-256 content; review every copy before removing it.",
   scan: async (ctx) => {
     const roots = [home(ctx, "Desktop"), home(ctx, "Documents"), home(ctx, "Downloads")];
     const files = (await Promise.all(roots.map((root) => walkFiles(root, ctx.signal)))).flat();

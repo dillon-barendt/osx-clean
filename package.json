@@ -23,7 +23,8 @@
     "dev": "tsc -p tsconfig.json && node dist/cli.js",
     "start": "node dist/cli.js",
     "clean": "rm -rf dist",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test tests/*.test.js"
   },
   "keywords": [
     "macos",
