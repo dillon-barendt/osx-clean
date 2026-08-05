@@ -14,10 +14,11 @@ function duRaw(args: string[], signal?: AbortSignal): Promise<DuEntry[]> {
     child.stderr.on("data", (chunk) => (err += chunk));
     child.on("error", reject); // For spawn errors
     child.on("close", (code) => {
-      if (err) {
-        // Log du's warnings (e.g. permission denied), but don't treat as a fatal error.
-        // The output on stdout is still valuable.
-        console.warn(`du stderr (exit code ${code}):\n${err}`);
+      const unexpectedErrors = err
+        .split("\n")
+        .filter((line) => line && !/(Operation not permitted|Permission denied)/i.test(line));
+      if (unexpectedErrors.length > 0 && !signal?.aborted) {
+        console.warn(`du stderr (exit code ${code}):\n${unexpectedErrors.join("\n")}`);
       }
       const entries: DuEntry[] = [];
       for (const line of out.split("\n")) {
