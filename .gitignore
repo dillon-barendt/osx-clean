@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+output/
+.playwright-cli/
+.worktrees/
+.idea/
+.ai/
+.env
+.env.*
+*.log
+.DS_Store

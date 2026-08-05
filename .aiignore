@@ -7,6 +7,11 @@
 *.tmp
 
 # or folders
+node_modules/
 dist/
 build/
 out/
+.idea/
+.git/
+.worktrees/
+output/

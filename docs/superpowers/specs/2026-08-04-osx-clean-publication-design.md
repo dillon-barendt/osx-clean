@@ -7,7 +7,7 @@ Publish `osx-clean` as a focused, credible macOS storage inspection and cleanup 
 ## Product Identity
 
 - Use `osx-clean` everywhere a user sees the product name: package metadata, CLI help, browser title, page heading, token names, temporary files, and documentation.
-- Remove the nested `mac-clean/` source clone and all references to its previous owner, repository, branding, and overstated Electron/server-management positioning.
+- Remove the nested source clone and all references to its previous owner, repository, branding, and overstated Electron/server-management positioning.
 - Keep the product honest: this is a local Node.js service with a browser UI, not an Electron app or remote fleet control plane.
 
 ## Visual Direction
@@ -37,4 +37,3 @@ Before publication:
 - Exercise the rendered UI in a real browser at desktop and mobile viewports.
 - Search the publication tree for stale clone names, owner references, nested source copies, IDE metadata, and generated artifacts.
 - Confirm the final Git diff and repository visibility after push.
-

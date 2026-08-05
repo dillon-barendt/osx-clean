@@ -1,0 +1,49 @@
+{
+  "name": "osx-clean",
+  "version": "0.1.0",
+  "description": "A local-first macOS storage scanner with explicit, reviewable cleanup actions.",
+  "type": "module",
+  "bin": {
+    "osx-clean": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "public",
+    "scripts",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "darwin"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json && node dist/cli.js",
+    "start": "node dist/cli.js",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "macos",
+    "cleanup",
+    "disk",
+    "cache",
+    "cli",
+    "gui"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dillon-barendt/osx-clean.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dillon-barendt/osx-clean/issues"
+  },
+  "homepage": "https://github.com/dillon-barendt/osx-clean#readme",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

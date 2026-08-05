@@ -29,7 +29,7 @@
 - Modify: `src/server.ts`
 - Modify: `src/trash.ts`
 - Modify: `src/scanners/types.ts`
-- Delete: `mac-clean/`
+- Delete: nested source clone
 
 **Interfaces:**
 - Consumes: existing package, CLI, HTTP token, and temporary-file naming
@@ -75,4 +75,3 @@
 - [ ] Confirm no stale clone identity, nested repository copy, IDE metadata, or generated output is staged.
 - [ ] Commit as `docs(osx-clean): document the local safety model`.
 - [ ] Create `dillon-barendt/osx-clean` as a public repository, push the default branch, and verify GitHub visibility.
-
