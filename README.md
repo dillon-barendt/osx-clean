@@ -5,6 +5,7 @@
 [![macOS](https://img.shields.io/badge/platform-macOS-171816?style=flat-square)](https://www.apple.com/macos/)
 [![Node.js 18+](https://img.shields.io/badge/node-%3E%3D18-43853d?style=flat-square)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square)](https://www.typescriptlang.org/)
+[![CI](https://github.com/dillon-barendt/osx-clean/actions/workflows/ci.yml/badge.svg)](https://github.com/dillon-barendt/osx-clean/actions/workflows/ci.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-ff5a1f?style=flat-square)](LICENSE)
 
 `osx-clean` maps storage usage, scans common cleanup targets, and keeps deletion behind an explicit review boundary. It runs entirely on your Mac as a dependency-light TypeScript service with a responsive browser interface.

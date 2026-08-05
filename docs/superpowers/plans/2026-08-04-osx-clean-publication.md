@@ -74,4 +74,4 @@
 - [x] Start `node dist/cli.js --no-open`, verify HTML plus authorized and unauthorized API behavior, then stop it.
 - [x] Confirm no stale clone identity, nested repository copy, IDE metadata, or generated output is staged.
 - [x] Commit as `docs(osx-clean): document the local safety model`.
-- [ ] Create `dillon-barendt/osx-clean` as a public repository, push the default branch, and verify GitHub visibility.
+- [x] Create `dillon-barendt/osx-clean` as a public repository, push the default branch, and verify GitHub visibility.
