@@ -35,11 +35,11 @@
 - Consumes: existing package, CLI, HTTP token, and temporary-file naming
 - Produces: one consistent `osx-clean` product identity and a publication-safe tree
 
-- [ ] Update ignore rules to exclude IDE, local AI, generated, and browser-test artifacts.
-- [ ] Rename package, binary, user-visible CLI output, request-token identifiers, and temporary files to `osx-clean`.
-- [ ] Remove the nested clone and scan for stale owner/product references.
-- [ ] Run `npm run typecheck` and confirm an exit code of 0.
-- [ ] Commit as `chore(osx-clean): establish clean project identity`.
+- [x] Update ignore rules to exclude IDE, local AI, generated, and browser-test artifacts.
+- [x] Rename package, binary, user-visible CLI output, request-token identifiers, and temporary files to `osx-clean`.
+- [x] Remove the nested clone and scan for stale owner/product references.
+- [x] Run `npm run typecheck` and confirm an exit code of 0.
+- [x] Commit as `feat(osx-clean): establish local cleaner`.
 
 ### Task 2: Precision-Utility Interface
 
@@ -52,11 +52,11 @@
 - Consumes: existing API endpoints and static DOM hooks
 - Produces: responsive themed UI without changing the service contract
 
-- [ ] Replace the browser title, heading, token global, and visible product copy with `osx-clean` language.
-- [ ] Add the graphite, warm-white, and signal-orange design tokens and responsive layout.
-- [ ] Add restrained load/scan motion and visible local-only safety cues with reduced-motion support.
-- [ ] Exercise options, rescan, category expansion, selection, and mobile layout in a real browser.
-- [ ] Commit as `feat(osx-clean): sharpen the cleanup interface`.
+- [x] Replace the browser title, heading, token global, and visible product copy with `osx-clean` language.
+- [x] Add the graphite, warm-white, and signal-orange design tokens and responsive layout.
+- [x] Add restrained load/scan motion and visible local-only safety cues with reduced-motion support.
+- [x] Exercise options, rescan, category expansion, selection, and mobile layout in a real browser.
+- [x] Commit as `feat(osx-clean): sharpen the cleanup interface`.
 
 ### Task 3: Public Documentation And Release Verification
 
@@ -68,10 +68,10 @@
 - Consumes: final package scripts, architecture, scan categories, and safety behavior
 - Produces: accurate contributor and user documentation for GitHub
 
-- [ ] Replace the drifted README with accurate overview, setup, safety, architecture, development, limitations, and license sections.
-- [ ] Update the license attribution to the current project owner.
-- [ ] Run `npm run typecheck` and `npm run build` and confirm both exit with code 0.
-- [ ] Start `node dist/cli.js --no-open`, verify the HTML and authenticated categories endpoint, then stop it.
-- [ ] Confirm no stale clone identity, nested repository copy, IDE metadata, or generated output is staged.
-- [ ] Commit as `docs(osx-clean): document the local safety model`.
+- [x] Replace the drifted README with accurate overview, setup, safety, architecture, development, limitations, and license sections.
+- [x] Update the license attribution to the current project owner.
+- [x] Run `npm run typecheck`, `npm run build`, and `npm test` and confirm all exit with code 0.
+- [x] Start `node dist/cli.js --no-open`, verify HTML plus authorized and unauthorized API behavior, then stop it.
+- [x] Confirm no stale clone identity, nested repository copy, IDE metadata, or generated output is staged.
+- [x] Commit as `docs(osx-clean): document the local safety model`.
 - [ ] Create `dillon-barendt/osx-clean` as a public repository, push the default branch, and verify GitHub visibility.

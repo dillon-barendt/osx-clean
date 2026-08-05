@@ -7,8 +7,8 @@ Publish `osx-clean` as a focused, credible macOS storage inspection and cleanup 
 ## Product Identity
 
 - Use `osx-clean` everywhere a user sees the product name: package metadata, CLI help, browser title, page heading, token names, temporary files, and documentation.
-- Remove the nested source clone and all references to its previous owner, repository, branding, and overstated Electron/server-management positioning.
-- Keep the product honest: this is a local Node.js service with a browser UI, not an Electron app or remote fleet control plane.
+- Remove the nested source clone and all references to its previous owner, repository, branding, and overstated infrastructure-management positioning.
+- Keep the product honest: this is a local Node.js service with a browser UI, not a remote fleet control plane.
 
 ## Visual Direction
 
@@ -26,7 +26,7 @@ The interface should communicate engineering confidence through visible operatin
 
 ## Documentation
 
-The README must describe only implemented behavior and include prerequisites, installation, usage, scan categories, safety boundaries, architecture, development commands, limitations, and license. It must use the final public repository URL and avoid claims about Electron, SSH, remote servers, enterprise infrastructure, or unsupported automation.
+The README must describe only implemented behavior and include prerequisites, installation, usage, scan categories, safety boundaries, architecture, development commands, limitations, and license. It must use the final public repository URL and avoid claims about unsupported architectures or automation.
 
 ## Verification
 
