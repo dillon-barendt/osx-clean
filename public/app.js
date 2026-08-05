@@ -57,8 +57,8 @@ function renderDisk(disk) {
   $("#disk-used").style.width = pct.toFixed(1) + "%";
   $("#disk-summary").textContent = `${formatBytes(disk.used)} used of ${formatBytes(disk.total)}`;
   $("#disk-legend").innerHTML = `
-    <span><span class="swatch" style="background:#0071e3"></span>Used ${formatBytes(disk.used)}</span>
-    <span><span class="swatch" style="background:#e9e9ed"></span>Available ${formatBytes(disk.free)}</span>`;
+    <span><span class="swatch" style="background:var(--accent)"></span>Used ${formatBytes(disk.used)}</span>
+    <span><span class="swatch" style="background:#d8d1c3"></span>Available ${formatBytes(disk.free)}</span>`;
 }
 
 function bdItem(name, size, max) {
@@ -417,6 +417,7 @@ function showToast(message) {
 }
 
 async function init() {
+  document.documentElement.dataset.ready = "true";
   loadOverview();
   const data = await api("/api/categories");
   state.categories = data.categories;

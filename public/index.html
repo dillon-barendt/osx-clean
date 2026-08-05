@@ -3,7 +3,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#171816" />
+    <meta
+      name="description"
+      content="A local-first macOS storage scanner with explicit, reviewable cleanup actions."
+    />
     <title>osx-clean</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='6' fill='%23171816'/%3E%3Cpath d='M16 16h32v32H16zM24 25h16M24 32h10M24 39h16' fill='none' stroke='%23ff5a1f' stroke-width='4'/%3E%3C/svg%3E"
+    />
     <link rel="stylesheet" href="/app.css" />
     <script>
       window.OSX_CLEAN_TOKEN = "%%TOKEN%%";
@@ -12,20 +21,33 @@
   <body>
     <header class="topbar">
       <div class="brand">
-        <span class="logo">🧹</span>
+        <span class="logo" aria-hidden="true">
+          <svg viewBox="0 0 48 48" role="img">
+            <path d="M9 8h30v32H9z" />
+            <path d="M16 16h16M16 24h10M16 32h16" />
+            <circle cx="34" cy="24" r="4" />
+          </svg>
+        </span>
         <div>
+          <span class="eyebrow">LOCAL STORAGE CONTROL</span>
           <h1>osx-clean</h1>
-          <p class="tagline">Local-only scan · exact duplicates · explicit approval</p>
+          <p class="tagline">Inspect deeply. Remove deliberately.</p>
         </div>
       </div>
-      <div class="status-pill">Boring to run. Hard to misuse.</div>
+      <div class="status-pill"><span class="status-dot"></span>Bound to this Mac</div>
     </header>
+
+    <aside class="trust-strip" aria-label="Safety boundaries">
+      <span><strong>01</strong> Loopback only</span>
+      <span><strong>02</strong> Exact duplicate hashes</span>
+      <span><strong>03</strong> Explicit file approval</span>
+    </aside>
 
     <main class="split">
       <section class="card overview">
         <div class="card-head">
           <h2>Storage</h2>
-          <span id="disk-summary" class="muted">Reading disk…</span>
+          <span id="disk-summary" class="muted" aria-live="polite">Reading disk…</span>
         </div>
         <div class="disk-bar"><div id="disk-used" class="disk-used"></div></div>
         <div id="disk-legend" class="disk-legend"></div>
@@ -36,11 +58,11 @@
         <div class="card-head">
           <div class="head-title">
             <h2>Cleanup</h2>
-            <p id="scan-status" class="muted">Starting scan…</p>
+            <p id="scan-status" class="muted" aria-live="polite">Starting scan…</p>
           </div>
           <div class="head-right">
             <div class="found">
-              <span id="found-value">0 B</span>
+              <span id="found-value" aria-live="polite">0 B</span>
               <small>found to review</small>
             </div>
             <button id="options-btn" class="icon-btn" title="Scan options" aria-label="Scan options">
@@ -96,7 +118,7 @@
       </div>
     </footer>
 
-    <div id="toast" class="toast" hidden></div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <script src="/app.js"></script>
   </body>
 </html>
