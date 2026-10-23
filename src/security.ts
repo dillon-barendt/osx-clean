@@ -7,7 +7,12 @@ const HOME = os.homedir();
 
 const PROTECTED_PREFIXES = [
   "/System",
-  "/usr",
+    "/usr/bin",
+    "/usr/sbin",
+    "/usr/lib",
+    "/usr/libexec",
+    "/usr/share",
+    "/Applications",
   "/bin",
   "/sbin",
   "/etc",
@@ -16,7 +21,6 @@ const PROTECTED_PREFIXES = [
   "/private/var/db",
   "/private/var/root",
   "/Library/Apple",
-  "/Applications",
   "/cores",
   "/opt/homebrew/bin",
   "/opt/homebrew/sbin",
@@ -24,6 +28,14 @@ const PROTECTED_PREFIXES = [
 
 const PROTECTED_EXACT = new Set([
   "/",
+    "/Volumes",
+    "/Users",
+    "/Users/Shared",
+    "/Applications",
+    "/Library",
+    "/System",
+    "/usr",
+    "/opt",
   HOME,
   path.join(HOME, "Library"),
   path.join(HOME, "Documents"),
@@ -38,6 +50,8 @@ const PROTECTED_EXACT = new Set([
   path.join(HOME, "Library", "Containers"),
   path.join(HOME, "Library", "Group Containers"),
   path.join(HOME, "Library", "Developer"),
+    path.join(HOME, "Library", "CloudStorage"),
+    path.join(HOME, "Library", "Mobile Documents"),
   path.join(HOME, ".Trash"),
   "/tmp",
   "/private/tmp",
@@ -49,12 +63,16 @@ const PROTECTED_EXACT = new Set([
 
 const ALLOWED_ROOTS = [
   HOME,
+    "/Volumes",
+    "/Users",
   "/tmp",
   "/private/tmp",
   "/var/tmp",
   "/private/var/tmp",
   "/var/folders",
   "/private/var/folders",
+    "/opt",
+    "/usr/local",
 ];
 
 export interface Verdict {
@@ -100,7 +118,9 @@ export function checkPathAllowed(rawPath: string, whitelist: string[] = []): Ver
     return { allowed: false, reason: "Path is whitelisted (excluded from cleaning)." };
   }
 
-  if (PROTECTED_EXACT.has(p)) return { allowed: false, reason: `Protected directory: ${p}` };
+    if (p === "/Volumes" || path.dirname(p) === "/Volumes") {
+        return {allowed: false, reason: `Volume root directories cannot be deleted directly: ${p}`};
+    }
   if (isUserApp(p)) return { allowed: true };
 
   for (const prefix of PROTECTED_PREFIXES) {
@@ -109,9 +129,11 @@ export function checkPathAllowed(rawPath: string, whitelist: string[] = []): Ver
     }
   }
 
+    if (PROTECTED_EXACT.has(p)) return {allowed: false, reason: `Protected directory: ${p}`};
+
   const inAllowed = ALLOWED_ROOTS.some((r) => isUnderRoot(p, r));
   if (!inAllowed) {
-    return { allowed: false, reason: "Path outside the allowed area (home / temp)." };
+      return {allowed: false, reason: "Path outside the allowed area (home / volumes / temp)."};
   }
   return { allowed: true };
 }

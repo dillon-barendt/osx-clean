@@ -22,6 +22,10 @@ Most cleaners ask for broad trust and hide the mechanics. `osx-clean` takes the 
 - **Keep risky commands manual.** Tool-owned cleanup commands are shown for review, not executed silently.
 - **Stay local.** The service listens only on `127.0.0.1` and authorizes API requests with a per-process random token.
 
+## Documentation
+
+For detailed step-by-step instructions, scanning categories, configuration options, safety architecture, and limitations, refer to the [User Guide](docs/USER_GUIDE.md).
+
 ## Quick Start
 
 Requirements:
@@ -32,9 +36,9 @@ Requirements:
 ```bash
 git clone https://github.com/dillon-barendt/osx-clean.git
 cd osx-clean
-npm ci
-npm run build
-npm start
+pnpm install
+pnpm run build
+pnpm start
 ```
 
 The CLI starts the local service and opens the authenticated interface in your default browser.
@@ -48,7 +52,7 @@ Open: http://127.0.0.1:4280/?token=<per-process-token>
 To expose the command from your checkout:
 
 ```bash
-npm link
+pnpm link
 osx-clean --no-open
 ```
 
@@ -113,19 +117,19 @@ The runtime has no third-party dependencies. TypeScript and Node type definition
 ## Development
 
 ```bash
-npm ci
-npm run typecheck
-npm test
-npm run dev -- --no-open
+pnpm ci
+pnpm run typecheck
+pnpm test
+pnpm run dev -- --no-open
 ```
 
 | Script | Purpose |
 | --- | --- |
-| `npm run typecheck` | Check strict TypeScript types without emitting files. |
-| `npm run build` | Compile `src/` into `dist/`. |
-| `npm test` | Build and run the Node regression suite. |
-| `npm run dev` | Build and launch the local interface. |
-| `npm run clean` | Remove compiled output. |
+| `pnpm run typecheck` | Check strict TypeScript types without emitting files. |
+| `pnpm run build` | Compile `src/` into `dist/`. |
+| `pnpm test` | Build and run the Node regression suite. |
+| `pnpm run dev` | Build and launch the local interface. |
+| `pnpm run clean` | Remove compiled output. |
 
 The regression suite verifies content-hash duplicate matching and deletion-root protections using only Node's built-in test runner.
 
@@ -135,15 +139,15 @@ The regression suite verifies content-hash duplicate matching and deletion-root 
 - macOS privacy protections may hide folders until your terminal has the relevant Files and Folders or Full Disk Access permission.
 - Some categories report reclaimable space or a command rather than deleting tool-managed data directly.
 - Permanent deletion cannot be recovered. Prefer Trash unless you have a specific reason not to.
-- This project is currently tested manually in the browser and with focused service-level regression tests; it does not yet have a full end-to-end test suite.
+- Duplicate and large file scanning searches across your entire user directories, mounted volumes (`/Volumes`, Mountain Duck, Google Drive, external drives), cloud integrations (`~/Library/CloudStorage` for Proton Drive, Google Drive, OneDrive, Dropbox, Box, iCloud Drive), and `/Users/Shared`.
 
 ## Contributing
 
 Keep changes narrow, preserve the local-only safety boundary, and add a regression test for behavioral fixes. Before opening a pull request, run:
 
 ```bash
-npm run typecheck
-npm test
+pnpm run typecheck
+pnpm test
 git diff --check
 ```
 

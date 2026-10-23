@@ -10,7 +10,8 @@
     "dist",
     "public",
     "scripts",
-    "README.md"
+    "README.md",
+    "docs/USER_GUIDE.md"
   ],
   "engines": {
     "node": ">=18"
@@ -46,5 +47,8 @@
   "devDependencies": {
     "@types/node": "^22.10.0",
     "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "self-update": "^0.0.1"
   }
 }

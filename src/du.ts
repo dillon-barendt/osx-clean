@@ -16,7 +16,13 @@ function duRaw(args: string[], signal?: AbortSignal): Promise<DuEntry[]> {
     child.on("close", (code) => {
       const unexpectedErrors = err
         .split("\n")
-        .filter((line) => line && !/(Operation not permitted|Permission denied)/i.test(line));
+          .filter(
+              (line) =>
+                  line &&
+                  !/(Operation not permitted|Permission denied|Resource deadlock avoided|No such file or directory|File name too long)/i.test(
+                      line,
+                  ),
+          );
       if (unexpectedErrors.length > 0 && !signal?.aborted) {
         console.warn(`du stderr (exit code ${code}):\n${unexpectedErrors.join("\n")}`);
       }
