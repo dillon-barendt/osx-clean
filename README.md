@@ -14,6 +14,31 @@
 
 No account. No telemetry. No cloud service. No background daemon.
 
+## Desktop app
+
+Run `osx-clean` in its own Mac window with a bundled runtime, native menus, and
+the same scanner and cleanup controls. The downloadable app needs **macOS 12+**;
+Node.js and pnpm are only needed to build from source.
+
+- Open the matching DMG (`arm64` for Apple Silicon, `x64` for Intel), drag
+  **osx-clean** into **Applications**, and open it from Finder or Spotlight.
+- Grant permissions to **osx-clean.app** under **System Settings → Privacy &
+  Security**, including Full Disk Access if you want broader scan coverage.
+- Closing the window or pressing **⌘Q** ends the app and its local service.
+
+Build a DMG and ZIP locally with Node.js **22.12+** and pnpm **10.28.2**:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm desktop:dist
+```
+
+Downloads are created in `release/`. The [Desktop builds workflow](https://github.com/dillon-barendt/osx-clean/actions/workflows/desktop.yml)
+produces separate Apple Silicon and Intel artifacts when run. These are unsigned
+MVP builds; a Developer ID signed and notarized release requires publisher
+credentials. See the [Desktop Guide](docs/DESKTOP.md) for installation, macOS
+opening restrictions, verification, packaging choices, and release instructions.
+
 ## Why osx-clean
 
 Most cleaners ask for broad trust and hide the mechanics. `osx-clean` takes the opposite approach:
@@ -24,7 +49,7 @@ Most cleaners ask for broad trust and hide the mechanics. `osx-clean` takes the 
 - **Keep risky commands visible.** Tool-owned cleanup commands are shown for review instead of executed silently.
 - **Stay local.** The service binds to `127.0.0.1` and uses a per-process authentication token.
 
-## Quick start
+## Browser / CLI quick start
 
 Requirements:
 
@@ -68,7 +93,10 @@ See the [User Guide](docs/USER_GUIDE.md) for permissions, scan controls, cleanup
 
 `osx-clean` asks macOS for access as it reaches protected locations. Allow Files and Folders access for your terminal or IDE when prompted. For broader visibility into Mail attachments, application caches, Library logs, and other protected data, grant your terminal application Full Disk Access under **System Settings → Privacy & Security → Full Disk Access**.
 
-Permissions affect what macOS makes visible; they do not bypass the service's path protections. If access is unavailable, the affected scanner reports the limitation instead of silently claiming the area is empty.
+For the desktop edition, grant these permissions to **osx-clean.app** instead of
+your terminal. Permissions affect what macOS makes visible; they do not bypass
+the service's path protections. Inaccessible locations can be skipped or produce
+scan errors, so empty results do not prove a protected location is empty.
 
 ## What it scans
 
@@ -99,7 +127,7 @@ The service enforces the cleanup boundary server-side:
 2. **Per-process authorization:** API routes require a random token checked with timing-safe comparison.
 3. **Protected roots:** system areas, user root folders, Library roots, and temporary roots cannot be deletion targets.
 4. **Scan provenance:** a path must have appeared in the current session's scan results before deletion is accepted.
-5. **Fresh validation:** every action performs a new `lstat`; symlinks, missing files, and changed paths are rejected.
+5. **Fresh validation:** every action performs a new `lstat`; symlinks and missing files are rejected.
 6. **Trash-first recovery:** Move to Trash is the primary action; permanent deletion is visually secondary and requires explicit confirmation.
 7. **Application guardrail:** installed `.app` bundles can be moved to Trash but cannot be permanently deleted through the API.
 
@@ -122,7 +150,16 @@ CLI (src/cli.ts)
               +-- macOS Trash bridge (scripts/trash-items.js)
 ```
 
+The desktop entry point (`src/desktop/main.ts`) bundles the same service and UI
+inside Electron. It chooses an available loopback port and loads the tokenized
+URL in a sandboxed window with Node integration disabled. The existing CLI,
+scanners, and cleanup logic are shared unchanged.
+
 ## Development
+
+Use Node.js 22.12+ for the complete desktop build toolchain. The browser/CLI
+runtime retains its Node.js 18+ requirement. Dependencies are pinned through
+`pnpm-lock.yaml`; use `pnpm install --frozen-lockfile` for reproducible installs.
 
 ```bash
 pnpm install
@@ -139,8 +176,16 @@ pnpm run dev -- --no-open
 | `pnpm test` | Build and run the Node regression suite. |
 | `pnpm run dev` | Build and launch the local interface. |
 | `pnpm run clean` | Remove compiled output. |
+| `pnpm desktop` | Build and launch the Mac desktop app in development. |
+| `pnpm desktop:pack` | Build an unpacked `.app` under `release/`. |
+| `pnpm desktop:dist` | Build DMG and ZIP downloads for the current architecture. |
+| `pnpm desktop:dist:all` | Build separate Apple Silicon and Intel downloads. |
+| `pnpm desktop:smoke` | Verify the desktop UI and API without a full storage scan. |
+| `pnpm desktop:smoke:packaged` | Verify the built `.app` on matching hardware. |
 
 The test suite covers exact duplicate matching, filesystem safety rules, authenticated API routes, SSE streams, deletion verification, and CLI startup behavior.
+Desktop regression checks cover renderer isolation, local navigation, ephemeral
+loopback startup, shutdown, and packaged file configuration.
 
 ## Limitations
 

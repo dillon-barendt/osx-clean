@@ -36,6 +36,8 @@ separate, guarded action.
 - `tests/production.test.js` covers the built HTTP service, authentication,
   SSE streams, and end-to-end safety checks.
 - `docs/USER_GUIDE.md` documents user-visible behavior and safety limitations.
+- `src/desktop/` wraps the existing server in Electron without changing scanner or cleanup logic.
+- `electron-builder.json` defines `.app`, DMG, and ZIP packaging; `docs/DESKTOP.md` covers installation and distribution.
 
 ## Runtime and commands
 
@@ -50,6 +52,9 @@ pnpm run build
 pnpm test
 pnpm run dev -- --no-open
 pnpm run clean
+pnpm desktop
+pnpm desktop:dist
+pnpm desktop:smoke:packaged
 ```
 
 `pnpm test` builds `src/` into `dist/` and runs the Node built-in test runner.
@@ -67,6 +72,13 @@ git diff --check
 The scanner can traverse large home directories, mounted volumes, and cloud
 storage. Avoid launching a full interactive scan as a substitute for focused
 tests during development.
+
+Desktop builds require Node.js 22.12+ and pinned pnpm 10.28.2. Use
+`pnpm install --frozen-lockfile`. `release/` contains generated app artifacts
+and stays ignored. Packaged smoke checks suppress automatic scans; run them on
+the matching CPU architecture. Keep the JXA helper outside ASAR, retain renderer
+sandboxing and local-origin restrictions, and never claim unsigned artifacts
+are signed or notarized.
 
 ## Implementation rules
 

@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "A local-first macOS storage scanner with explicit, reviewable cleanup actions.",
   "type": "module",
+  "main": "dist/desktop/main.js",
+  "author": "Dillon Barendt",
+  "packageManager": "pnpm@10.28.2",
   "bin": {
     "osx-clean": "dist/cli.js"
   },
@@ -25,6 +28,12 @@
     "start": "node dist/cli.js",
     "clean": "rm -rf dist",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "desktop": "pnpm run build && electron .",
+    "desktop:pack": "pnpm run build && electron-builder --config electron-builder.json --mac --dir --publish never",
+    "desktop:dist": "pnpm run build && electron-builder --config electron-builder.json --mac --publish never",
+    "desktop:dist:all": "pnpm run build && electron-builder --config electron-builder.json --mac --arm64 --x64 --publish never",
+    "desktop:smoke": "pnpm run build && node scripts/smoke-desktop.mjs node_modules/electron/dist/Electron.app/Contents/MacOS/Electron .",
+    "desktop:smoke:packaged": "node scripts/smoke-desktop.mjs",
     "test": "npm run build && node --test tests/*.test.js"
   },
   "keywords": [
@@ -46,6 +55,8 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0",
     "typescript": "^5.7.0"
   },
   "dependencies": {

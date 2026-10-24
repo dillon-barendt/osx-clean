@@ -9,6 +9,7 @@ A comprehensive guide to understanding, configuring, and operating **osx-clean**
 1. [Overview & Philosophy](#overview--philosophy)
 2. [Prerequisites & macOS Permissions](#prerequisites--macos-permissions)
 3. [Quick Start & Launching](#quick-start--launching)
+   - [Desktop App](#desktop-app)
    - [Running from Source](#running-from-source)
    - [CLI Options](#cli-options)
 4. [Step-by-Step Usage Guide](#step-by-step-usage-guide)
@@ -45,17 +46,31 @@ Most disk cleanup applications operate as opaque "black boxes" that ask for admi
 
 ### Requirements
 - **Operating System:** macOS (Apple Silicon or Intel).
-- **Runtime:** Node.js 18.0.0 or higher.
-- **Package Manager:** `pnpm` (recommended) or `npm`.
+- **Desktop app:** macOS 12+; use the Apple Silicon (`arm64`) or Intel (`x64`) download. No separately installed runtime is required.
+- **Running the CLI:** Node.js 18.0.0 or higher.
+- **Building from source:** Node.js 22.12+ and pnpm 10.28.2 for the desktop toolchain.
 
 ### macOS Privacy Permissions (TCC)
 macOS enforces strict Transparency, Consent, and Control (TCC) permissions:
 - When scanning user directories (`~/Documents`, `~/Downloads`, `~/Desktop`), macOS may prompt you to grant permission to your Terminal or IDE. Click **Allow**.
 - For full system-wide visibility (such as scanning all Mail attachments, application caches, and Library logs), you can grant **Full Disk Access** to your terminal emulator (Terminal, iTerm2, Ghostty, etc.) under **System Settings → Privacy & Security → Full Disk Access**.
+- For the packaged desktop edition, grant access to **osx-clean.app** instead. Use **osx-clean → Full Disk Access…**, add the installed app, then quit and reopen it. If the Trash fallback requests Finder automation, review it under **Privacy & Security → Automation**.
 
 ---
 
 ## Quick Start & Launching
+
+### Desktop App
+
+Open the DMG for your Mac, drag **osx-clean** into **Applications**, and launch
+it from Finder, Spotlight, or the Dock. The app opens the existing interface in
+its own window and selects an available loopback port automatically. All scan
+and cleanup controls below work the same way. Close the window or press **⌘Q**
+to exit the service.
+
+Builds produced by the MVP packaging are not Developer ID signed or notarized.
+See the [Desktop Guide](DESKTOP.md) for available build artifacts, installation
+restrictions, permissions, and signing instructions.
 
 ### Running from Source
 
@@ -268,13 +283,13 @@ Calculating duplicate files across tens of thousands of user files is computatio
 ## Troubleshooting & FAQ
 
 ### Q: Why do some folders show "Permission denied" or "Operation not permitted"?
-**A:** macOS System Integrity Protection (SIP) and TCC restrict access to certain private directories (such as Mail or Safari sandboxes). To allow `osx-clean` to scan these areas, open **System Settings → Privacy & Security → Full Disk Access** and add your terminal application.
+**A:** macOS System Integrity Protection (SIP) and TCC restrict access to certain private directories (such as Mail or Safari sandboxes). Open **System Settings → Privacy & Security → Full Disk Access** and add **osx-clean.app** for desktop use, or your terminal for CLI use. Quit and relaunch after changing access.
 
 ### Q: Where do files go when I click "Move to Trash"?
 **A:** They are moved directly to your macOS Trash (`~/.Trash`). You can open the Trash from your macOS Dock and click **Put Back** on any file to restore it to its original location.
 
 ### Q: How do I stop the server?
-**A:** In your terminal where `osx-clean` is running, press `Ctrl + C`. The server will terminate immediately and close all connections.
+**A:** In the desktop app, close its window or press **⌘Q**. For the CLI, press `Ctrl + C` in the terminal where it is running.
 
 ---
 

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "com.dillonbarendt.osx-clean",
+  "productName": "osx-clean",
+  "directories": { "output": "release", "buildResources": "desktop/assets" },
+  "files": ["dist/**/*", "public/**/*", "scripts/trash-items.js", "docs/DESKTOP.md", "docs/USER_GUIDE.md", "package.json", "LICENSE"],
+  "asar": false,
+  "npmRebuild": false,
+  "artifactName": "${name}-${version}-mac-${arch}.${ext}",
+  "mac": {
+    "target": ["dmg", "zip"],
+    "category": "public.app-category.utilities",
+    "icon": "desktop/assets/icon.icns",
+    "minimumSystemVersion": "12.0",
+    "extendInfo": {
+      "NSAppleEventsUsageDescription": "osx-clean may ask Finder to move reviewed items to the Trash.",
+      "NSDocumentsFolderUsageDescription": "Scan Documents for files you can review before cleanup.",
+      "NSDownloadsFolderUsageDescription": "Scan Downloads for files you can review before cleanup.",
+      "NSDesktopFolderUsageDescription": "Scan Desktop for files you can review before cleanup.",
+      "NSRemovableVolumesUsageDescription": "Inspect storage on attached drives for reviewable cleanup candidates.",
+      "NSNetworkVolumesUsageDescription": "Inspect mounted storage for reviewable cleanup candidates."
+    }
+  },
+  "dmg": {
+    "title": "Install osx-clean",
+    "contents": [
+      { "x": 130, "y": 170, "type": "file" },
+      { "x": 410, "y": 170, "type": "link", "path": "/Applications" }
+    ]
+  }
+}
