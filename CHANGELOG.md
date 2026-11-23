@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Performance
+
+- Stream file discovery with visited-directory tracking, normalized root deduplication, bounded adaptive workers, and coalesced progress updates.
+- Reduce duplicate-scan metadata retention and full-file reads using size, prefix, and tail filters followed by exact SHA-256 verification.
+- Preserve distinct hard links, explicit roots inside skipped folders, path filtering, and cancellation; handle short sample reads safely.
+- Add repeatable work measurements and scanning regressions in `docs/SCANNER_PERFORMANCE.md`.
+
 ### Added
 
 - Electron desktop entry point reusing the existing server, UI, scanner, and cleanup logic.
@@ -13,7 +20,7 @@
 
 ### Unchanged
 
-- CLI startup, API routes and authorization, scan categories, hashing, path validation, Trash behavior, and permanent-delete confirmations.
+- CLI startup, API routes and authorization, scan categories, exact SHA-256 matching, path validation, Trash behavior, and permanent-delete confirmations.
 
 ### Distribution status
 

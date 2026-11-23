@@ -1,4 +1,4 @@
-# osx-clean
+``# osx-clean
 
 **A local-first macOS storage scanner that makes every cleanup action inspectable.**
 
@@ -115,9 +115,13 @@ Large-file and duplicate scans can search user directories, mounted volumes, clo
 
 ## Duplicate detection
 
-Duplicate matching is content-based, not name-based. The scanner narrows candidates by exact byte size and a prefix fingerprint, then verifies survivors with a full SHA-256 hash. Files with different contents are excluded even when their names and sizes match.
+Duplicate matching is content-based, not name-based. The scanner narrows candidates by exact byte size, a prefix fingerprint, and a tail sample for larger files, then verifies survivors with a full SHA-256 hash. Files with different contents are excluded even when their names and sizes match.
 
 The result is an exact duplicate group, not a recommendation that every copy should be removed. Choose a keeper before approving a cleanup action.
+
+Scanning streams directory entries with bounded, adaptive workers and avoids
+revisiting overlapping roots or directory aliases. See [Scanner performance](docs/SCANNER_PERFORMANCE.md)
+for resource bounds, regression checks, and measured reductions in filesystem work.
 
 ## Safety model
 

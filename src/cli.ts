@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+
 import { execFile } from "node:child_process";
 import { createServer, TOKEN } from "./server.js";
 
@@ -45,3 +45,5 @@ function main(): void {
 }
 
 main();
+
+

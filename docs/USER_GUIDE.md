@@ -241,7 +241,7 @@ For complex environments like **Docker**, `osx-clean` inspects reclaimable space
 
 ## Duplicate Detection Architecture
 
-Calculating duplicate files across tens of thousands of user files is computationally expensive. `osx-clean` employs an optimized, 4-stage pipeline that operates across your entire filesystem, mounted volumes, and cloud drives:
+Calculating duplicate files across tens of thousands of user files is computationally expensive. `osx-clean` uses progressive filters across user storage, mounted volumes, and cloud drives:
 
 1. **Comprehensive Scan Root Discovery:**
    Dynamically discovers and aggregates candidate roots across:
@@ -250,14 +250,21 @@ Calculating duplicate files across tens of thousands of user files is computatio
    - iCloud Drive under `~/Library/Mobile Documents/`.
    - All attached and mounted disks under `/Volumes/` (including Mountain Duck virtual mounts, Google Drive mounts, external SSDs/HDDs, and network shares).
    - Multi-user and shared locations like `/Users/Shared/`.
-2. **Parallel Directory Crawling:**
-   Traverses all discovered roots concurrently using non-blocking directory workers. Automatically skips recursive symlinks, `.git` internals, and package manager caches (`node_modules`, `.cache`) to keep traversal blazing fast.
+2. **Bounded Directory Crawling:**
+   Streams directory entries and deduplicates visited directories across overlapping roots and filesystem aliases. A small worker pool adapts to operation latency while retaining the existing symlink, `.git`, and package-cache exclusions.
 3. **Exact Size Partitioning:**
    Groups discovered files by exact byte size. Files with unique sizes are discarded immediately with zero hashing overhead.
 4. **Parallel Prefix Hashing (16 KB):**
    For files that share the exact same byte size, reads and hashes the first 16 KB using SHA-256 across a parallel worker pool. Files that differ in their header are instantly eliminated.
-5. **Full SHA-256 Verification & Grouping:**
+5. **Tail Sampling:**
+   For matching prefixes in files larger than 32 KB, compares the last 16 KB to eliminate common-header files with different endings before reading the full contents.
+6. **Full SHA-256 Verification & Grouping:**
    Only candidates that share both identical file sizes and matching 16 KB prefix hashes are streamed through full SHA-256 hashing. Surviving duplicate sets are grouped with unique color indicators and sorted by total reclaimable disk size.
+
+Samples only rule candidates out; duplicate matches still require exact size and
+a full SHA-256 digest. Small files are already read in full during the prefix
+pass. See [Scanner performance](SCANNER_PERFORMANCE.md) for resource bounds and
+repeatable measurements.
 
 ---
 

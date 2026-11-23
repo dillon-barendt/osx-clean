@@ -1,10 +1,10 @@
 import crypto from "node:crypto";
 import os from "node:os";
 import path from "node:path";
-import {createReadStream, promises as fsp} from "node:fs";
+import {createReadStream, promises as fsp, type Dirent} from "node:fs";
 
 import {checkPathAllowed, isWhitelisted} from "../security.js";
-import {lstatSafe, readdirSafe} from "../fswalk.js";
+import {directoryIdentity, lstatSafe, readDirectorySafe, readdirSafe, type Stat} from "../fswalk.js";
 import {toItem} from "./common.js";
 import type {Category, ScanContext, ScanItem} from "./types.js";
 
@@ -42,15 +42,33 @@ export interface DiscoveredFile {
     file: string;
 }
 
+function normalizeRoot(p: string): string {
+    const normalized = path.normalize(p);
+    return normalized === path.parse(normalized).root ? normalized : normalized.replace(/\/$/, "");
+}
+
+function rateLimitedProgress(callback?: (value: string) => void): (value: string) => void {
+    let next = 0;
+    return (value) => {
+        const now = performance.now();
+        if (now < next) return;
+        next = now + 100;
+        callback?.(value);
+    };
+}
+
 export async function discoverScanRoots(
     ctx: ScanContext,
     opts: { volumesDir?: string; usersDir?: string } = {},
 ): Promise<string[]> {
+    if (ctx.signal.aborted) return [];
     const roots: string[] = [];
     const seen = new Set<string>();
+    const directoryRoots = new Set<string>();
 
-    const addRoot = (p: string) => {
-        const norm = path.normalize(p);
+    const addRoot = (p: string, directory = false) => {
+        const norm = normalizeRoot(p);
+        if (directory) directoryRoots.add(norm);
         if (!seen.has(norm)) {
             seen.add(norm);
             roots.push(norm);
@@ -62,6 +80,7 @@ export async function discoverScanRoots(
     try {
         const homeEntries = await readdirSafe(ctx.home);
         for (const entry of homeEntries) {
+            if (ctx.signal.aborted) return [];
             if (
                 entry.name === ".DS_Store" ||
                 entry.name === ".Trash" ||
@@ -76,15 +95,17 @@ export async function discoverScanRoots(
                     // Discover CloudStorage (Proton Drive, Google Drive, OneDrive, Dropbox, Box)
                     const cs = path.join(full, "CloudStorage");
                     for (const cse of await readdirSafe(cs)) {
+                        if (ctx.signal.aborted) return [];
                         if (cse.isDirectory() && !cse.isSymbolicLink()) {
-                            addRoot(path.join(cs, cse.name));
+                            addRoot(path.join(cs, cse.name), true);
                         }
                     }
                     // Discover Mobile Documents (iCloud Drive)
                     const md = path.join(full, "Mobile Documents");
                     for (const mde of await readdirSafe(md)) {
+                        if (ctx.signal.aborted) return [];
                         if (mde.isDirectory() && !mde.isSymbolicLink()) {
-                            addRoot(path.join(md, mde.name));
+                            addRoot(path.join(md, mde.name), true);
                         }
                     }
                     continue;
@@ -95,7 +116,7 @@ export async function discoverScanRoots(
                     continue;
                 }
 
-                addRoot(full);
+                addRoot(full, true);
             } else if (entry.isFile()) {
                 addRoot(full);
             }
@@ -105,10 +126,11 @@ export async function discoverScanRoots(
 
     // 2. Mounted Volumes: /Volumes/* (Mountain Duck, Google Drive, Proton Drive, external drives, USBs)
     const volumesDir = opts.volumesDir ?? (ctx.home === os.homedir() ? "/Volumes" : null);
-    if (volumesDir) {
+    if (volumesDir && !ctx.signal.aborted) {
         try {
             const volEntries = await readdirSafe(volumesDir);
             for (const entry of volEntries) {
+                if (ctx.signal.aborted) return [];
                 if (entry.name === "Recovery" || entry.name === ".DS_Store") continue;
                 const full = path.join(volumesDir, entry.name);
                 if (entry.isSymbolicLink()) {
@@ -121,7 +143,7 @@ export async function discoverScanRoots(
                         continue;
                     }
                 }
-                addRoot(full);
+                addRoot(full, entry.isDirectory());
             }
         } catch {
         }
@@ -129,10 +151,11 @@ export async function discoverScanRoots(
 
     // 3. Multi-User & Shared Folders: /Users/Shared and other user profiles
     const usersDir = opts.usersDir ?? (ctx.home === os.homedir() ? "/Users" : null);
-    if (usersDir) {
+    if (usersDir && !ctx.signal.aborted) {
         try {
             const usersEntries = await readdirSafe(usersDir);
             for (const entry of usersEntries) {
+                if (ctx.signal.aborted) return [];
                 if (
                     entry.name === ".localized" ||
                     entry.name === "Guest" ||
@@ -143,7 +166,7 @@ export async function discoverScanRoots(
                 }
                 const full = path.join(usersDir, entry.name);
                 if (full === ctx.home) continue;
-                addRoot(full);
+                addRoot(full, entry.isDirectory());
             }
         } catch {
         }
@@ -151,10 +174,24 @@ export async function discoverScanRoots(
 
     // Fallback if no roots found
     if (roots.length === 0) {
-        roots.push(ctx.home);
+        addRoot(ctx.home, true);
     }
 
-    return roots;
+    const unique: string[] = [];
+    const directories = new Set<string>();
+    for (const root of roots) {
+        if (ctx.signal.aborted) break;
+        if (directoryRoots.has(root) && !isWhitelisted(root, ctx.options.whitelist)) {
+            const st = await lstatSafe(root);
+            if (st?.kind === "dir") {
+                const key = await directoryIdentity(root, st);
+                if (directories.has(key)) continue;
+                directories.add(key);
+            }
+        }
+        unique.push(root);
+    }
+    return unique;
 }
 
 export async function walkFilesFast(
@@ -168,92 +205,72 @@ export async function walkFilesFast(
         skipDirs?: Set<string>;
     } = {},
 ): Promise<DiscoveredFile[]> {
-    const minBytes = opts.minBytes ?? 0;
+    const results: DiscoveredFile[] = [];
+    await scanFiles(roots, opts, (item) => { results.push({ item, file: item.path }); });
+    return results;
+}
+
+type WalkOptions = NonNullable<Parameters<typeof walkFilesFast>[1]>;
+
+async function scanFiles(roots: string[], opts: WalkOptions, onFile: (item: ScanItem) => void): Promise<void> {
     const whitelist = opts.whitelist ?? [];
     const signal = opts.signal;
-    const concurrency = opts.concurrency ?? 32;
     const skipDirs = opts.skipDirs ?? DEFAULT_SKIP_DIR_NAMES;
+    const rootPaths = new Set(roots.map(normalizeRoot));
+    const visited = new Set<string>();
+    const emittedRoots = new Set<string>();
+    const progress = rateLimitedProgress(opts.onProgress);
 
-    const results: DiscoveredFile[] = [];
-    const dirQueue: string[] = [];
-
-    for (const root of roots) {
-        if (signal?.aborted) return results;
-        const st = await lstatSafe(root);
-        if (!st || st.kind === "symlink") continue;
-        if (st.kind === "file") {
-            if (st.size >= minBytes && checkPathAllowed(root, whitelist).allowed) {
-                results.push({item: toItem(root, "file", st.size, st.mtime, st.atime), file: root});
+    async function* files(): AsyncGenerator<{ file: string; st?: Stat }> {
+        for (const root of rootPaths) {
+            if (signal?.aborted) return;
+            const st = await lstatSafe(root);
+            if (!st || st.kind === "symlink") continue;
+            if (st.kind === "file") {
+                if (!emittedRoots.has(root) && checkPathAllowed(root, whitelist).allowed) {
+                    emittedRoots.add(root);
+                    yield { file: root, st };
+                }
+                continue;
             }
-        } else if (st.kind === "dir") {
-            if (!isWhitelisted(root, whitelist)) {
-                dirQueue.push(root);
+            const stack: { dir: string; entries: AsyncGenerator<Dirent> }[] = [];
+            async function enter(dir: string, stat?: Stat): Promise<void> {
+                if (signal?.aborted || isWhitelisted(dir, whitelist)) return;
+                const current = stat ?? await lstatSafe(dir);
+                if (current?.kind !== "dir") return;
+                const key = await directoryIdentity(dir, current);
+                if (visited.has(key)) return;
+                visited.add(key);
+                progress(dir);
+                if (!signal?.aborted) stack.push({ dir, entries: readDirectorySafe(dir) });
+            }
+            await enter(root, st);
+            try {
+                while (stack.length && !signal?.aborted) {
+                    const frame = stack[stack.length - 1]!;
+                    const next = await frame.entries.next();
+                    if (next.done) { stack.pop(); continue; }
+                    const entry = next.value;
+                    if (entry.name === ".DS_Store" || entry.isSymbolicLink() || skipDirs.has(entry.name)) continue;
+                    const full = path.join(frame.dir, entry.name);
+                    if (entry.isDirectory()) {
+                        await enter(full);
+                    } else if (entry.isFile() && !emittedRoots.has(full) && checkPathAllowed(full, whitelist).allowed) {
+                        if (rootPaths.has(full)) emittedRoots.add(full);
+                        yield { file: full };
+                    }
+                }
+            } finally {
+                for (const frame of stack.reverse()) await frame.entries.return(undefined);
             }
         }
     }
 
-    if (dirQueue.length === 0) return results;
-
-    let activeWorkers = 0;
-
-    return new Promise((resolve) => {
-        function dispatch() {
-            if (signal?.aborted) return resolve(results);
-            if (dirQueue.length === 0 && activeWorkers === 0) return resolve(results);
-
-            while (dirQueue.length > 0 && activeWorkers < concurrency) {
-                const dir = dirQueue.shift()!;
-                activeWorkers++;
-                opts.onProgress?.(dir);
-
-                readdirSafe(dir)
-                    .then(async (entries) => {
-                        if (signal?.aborted) return;
-                        const filesToStat: string[] = [];
-
-                        for (const entry of entries) {
-                            if (entry.name === ".DS_Store" || entry.isSymbolicLink()) continue;
-                            if (skipDirs.has(entry.name)) continue;
-                            const full = path.join(dir, entry.name);
-                            if (isWhitelisted(full, whitelist)) continue;
-
-                            if (entry.isDirectory()) {
-                                dirQueue.push(full);
-                            } else if (entry.isFile()) {
-                                filesToStat.push(full);
-                            }
-                        }
-
-                        if (filesToStat.length > 0) {
-                            await Promise.all(
-                                filesToStat.map(async (file) => {
-                                    if (signal?.aborted) return;
-                                    const st = await lstatSafe(file);
-                                    if (
-                                        st &&
-                                        st.kind === "file" &&
-                                        st.size >= minBytes &&
-                                        checkPathAllowed(file, whitelist).allowed
-                                    ) {
-                                        results.push({
-                                            item: toItem(file, "file", st.size, st.mtime, st.atime),
-                                            file,
-                                        });
-                                    }
-                                }),
-                            );
-                        }
-                    })
-                    .catch(() => {
-                    })
-                    .finally(() => {
-                        activeWorkers--;
-                        dispatch();
-                    });
-            }
+    await pool(files(), opts.concurrency ?? 8, signal, async ({ file, st }) => {
+        const current = st ?? await lstatSafe(file);
+        if (!signal?.aborted && current?.kind === "file" && current.size >= (opts.minBytes ?? 0)) {
+            onFile(toItem(file, "file", current.size, current.mtime, current.atime));
         }
-
-        dispatch();
     });
 }
 
@@ -266,16 +283,25 @@ const PREFIX_BYTES = 16384;
 async function prefixFingerprint(
     file: string,
     fileSize: number,
-    bytes = PREFIX_BYTES,
-): Promise<{ hash: string; isFull: boolean } | null> {
+    signal?: AbortSignal,
+    position = 0,
+): Promise<string | null> {
     let fh: fsp.FileHandle | null = null;
   try {
+      if (signal?.aborted) return null;
       fh = await fsp.open(file, "r");
-      const readLen = Math.min(bytes, fileSize);
+      const readLen = Math.min(PREFIX_BYTES, fileSize - position);
       const buf = Buffer.allocUnsafe(readLen);
-      const {bytesRead} = await fh.read(buf, 0, readLen, 0);
-      const hash = crypto.createHash("sha256").update(buf.subarray(0, bytesRead)).digest("hex");
-      return {hash, isFull: fileSize <= bytes};
+      let offset = 0;
+      while (offset < readLen) {
+          if (signal?.aborted) return null;
+          const { bytesRead } = await fh.read(buf, offset, readLen - offset, position + offset);
+          if (bytesRead === 0) return null;
+          offset += bytesRead;
+      }
+      if (signal?.aborted || (await fh.stat()).size !== fileSize) return null;
+      const hash = crypto.createHash("sha256").update(buf).digest("hex");
+      return hash;
   } catch {
     return null;
   } finally {
@@ -284,62 +310,68 @@ async function prefixFingerprint(
   }
 }
 
-async function fingerprint(file: string, signal?: AbortSignal): Promise<string | null> {
+async function fingerprint(file: string, expectedSize: number, signal?: AbortSignal): Promise<string | null> {
     if (signal?.aborted) return null;
-    return new Promise((resolve) => {
-        let resolved = false;
+    try {
         const hash = crypto.createHash("sha256");
-        const stream = createReadStream(file, {highWaterMark: 1024 * 1024});
-
-        const onAbort = () => {
-            if (!resolved) {
-                resolved = true;
-                stream.destroy();
-                resolve(null);
-            }
-        };
-        signal?.addEventListener("abort", onAbort, {once: true});
-
-        stream.on("data", (chunk) => {
+        let bytes = 0;
+        const stream = createReadStream(file, { highWaterMark: 64 * 1024, signal });
+        for await (const chunk of stream) {
+            bytes += chunk.length;
             hash.update(chunk);
-        });
-        stream.on("end", () => {
-            if (!resolved) {
-                resolved = true;
-                signal?.removeEventListener("abort", onAbort);
-                resolve(hash.digest("hex"));
-            }
-        });
-        stream.on("error", () => {
-            if (!resolved) {
-                resolved = true;
-                signal?.removeEventListener("abort", onAbort);
-                resolve(null);
-            }
-        });
-    });
+        }
+        return !signal?.aborted && bytes === expectedSize ? hash.digest("hex") : null;
+    } catch {
+        return null;
+    }
 }
 
-async function pool<T, R>(
-    items: T[],
+async function pool<T>(
+    items: Iterable<T> | AsyncIterable<T>,
     concurrency: number,
     signal: AbortSignal | undefined,
-    fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-    const results = new Array<R>(items.length);
-    let cursor = 0;
-    const workers = Array.from({length: Math.min(concurrency, items.length)}, async () => {
-        while (cursor < items.length) {
-            if (signal?.aborted) break;
-            const idx = cursor++;
-            const item = items[idx];
-            if (item !== undefined) {
-                results[idx] = await fn(item);
-            }
+    fn: (item: T) => Promise<void>,
+): Promise<void> {
+    const maximum = Number.isFinite(concurrency) ? Math.max(1, Math.min(8, Math.floor(concurrency))) : 8;
+    let limit = Math.min(2, maximum);
+    let elapsed = 0;
+    let samples = 0;
+    let failure: unknown;
+    let failed = false;
+    let notify: (() => void) | undefined;
+    const pending = new Set<Promise<void>>();
+    async function* source() { yield* items; }
+    const iterator = source();
+    try {
+        while (!signal?.aborted && !failed) {
+            while (pending.size >= limit) await new Promise<void>((resolve) => { notify = resolve; });
+            if (signal?.aborted || failed) break;
+            const next = await iterator.next();
+            if (next.done || signal?.aborted) break;
+            const start = performance.now();
+            const task = fn(next.value).catch((error: unknown) => {
+                failed = true;
+                failure = error;
+            }).finally(() => {
+                pending.delete(task);
+                notify?.();
+                notify = undefined;
+                elapsed += performance.now() - start;
+                if (++samples === 8) {
+                    const average = elapsed / samples;
+                    if (average > 25) limit = Math.max(1, Math.floor(limit / 2));
+                    else if (average < 8) limit = Math.min(maximum, limit + 1);
+                    elapsed = 0;
+                    samples = 0;
+                }
+            });
+            pending.add(task);
         }
-    });
-    await Promise.all(workers);
-    return results;
+    } finally {
+        await iterator.return();
+        await Promise.all(pending);
+    }
+    if (failed) throw failure;
 }
 
 export const oldDownloads: Category = {
@@ -397,95 +429,88 @@ export const duplicates: Category = {
   scan: async (ctx) => {
       const minBytes = ctx.options.duplicatesMinMB * 1024 * 1024;
       const roots = await discoverScanRoots(ctx);
-      const candidates = await walkFilesFast(roots, {
+      const progress = rateLimitedProgress(ctx.onProgress);
+      const sizeBuckets = new Map<number, ScanItem | ScanItem[]>();
+      await scanFiles(roots, {
           minBytes,
           whitelist: ctx.options.whitelist,
           signal: ctx.signal,
-          onProgress: ctx.onProgress,
+          onProgress: progress,
+      }, (item) => {
+          const previous = sizeBuckets.get(item.size);
+          if (!previous) sizeBuckets.set(item.size, item);
+          else if (Array.isArray(previous)) previous.push(item);
+          else sizeBuckets.set(item.size, [previous, item]);
       });
 
-      if (ctx.signal.aborted || candidates.length === 0) return [];
-
-      // Step 1: Bucket by exact file size
-      const sizeBuckets = new Map<number, DiscoveredFile[]>();
-      for (const c of candidates) {
-          const list = sizeBuckets.get(c.item.size);
-          if (list) list.push(c);
-          else sizeBuckets.set(c.item.size, [c]);
+      for (const [size, bucket] of sizeBuckets) {
+          if (!Array.isArray(bucket)) sizeBuckets.delete(size);
       }
 
-      const potentialDupes: DiscoveredFile[] = [];
-      for (const list of sizeBuckets.values()) {
-          if (list.length > 1) potentialDupes.push(...list);
-      }
-      if (potentialDupes.length === 0) return [];
-
-      // Step 2: Compute prefix hashes in parallel for files sharing sizes
-      const prefixResults = await pool(potentialDupes, 16, ctx.signal, async (c) => {
-          ctx.onProgress(c.file);
-          const res = await prefixFingerprint(c.file, c.item.size);
-          return {c, ...res};
-      });
-
-      if (ctx.signal.aborted) return [];
-
-      // Group by size + prefixHash
-      const prefixBuckets = new Map<string, typeof prefixResults>();
-      for (const item of prefixResults) {
-          if (!item.hash) continue;
-          const key = `${item.c.item.size}:${item.hash}`;
-          const list = prefixBuckets.get(key) ?? [];
-          list.push(item);
-          prefixBuckets.set(key, list);
-      }
-
-      const needFullHash: DiscoveredFile[] = [];
-      const finalHashed: { c: DiscoveredFile; fullHash: string }[] = [];
-
-      for (const list of prefixBuckets.values()) {
-          if (list.length <= 1) continue;
-          for (const item of list) {
-              if (item.isFull && item.hash) {
-                  finalHashed.push({c: item.c, fullHash: item.hash});
-              } else {
-                  needFullHash.push(item.c);
-              }
-          }
-    }
-
-      // Step 3: Compute full SHA-256 hash in parallel for candidates requiring full pass
-      if (needFullHash.length > 0 && !ctx.signal.aborted) {
-          const fullResults = await pool(needFullHash, 8, ctx.signal, async (c) => {
-              ctx.onProgress(c.file);
-              const fullHash = await fingerprint(c.file, ctx.signal);
-              return {c, fullHash};
+      const results: ScanItem[] = [];
+      const addGroup = (items: ScanItem[], size: number, hash: string) => {
+          if (items.length < 2) return;
+          const groupKey = `${size}:${hash}`;
+          for (const item of items) results.push({
+              ...item, groupKey, groupLabel: `${item.name} · ${hash.slice(0, 8)}`,
           });
-          for (const item of fullResults) {
-              if (item.fullHash) {
-                  finalHashed.push({c: item.c, fullHash: item.fullHash});
+      };
+      for (const [size, bucket] of sizeBuckets) {
+          sizeBuckets.delete(size);
+          if (ctx.signal.aborted) return [];
+          if (!Array.isArray(bucket)) continue;
+          const prefixes = new Map<string, ScanItem[]>();
+          await pool(bucket, 4, ctx.signal, async (item) => {
+              progress(item.path);
+              const prefix = await prefixFingerprint(item.path, size, ctx.signal);
+              if (!prefix) return;
+              const group = prefixes.get(prefix);
+              if (group) group.push(item);
+              else prefixes.set(prefix, [item]);
+          });
+          bucket.length = 0;
+          for (const [prefix, items] of prefixes) {
+              prefixes.delete(prefix);
+              if (ctx.signal.aborted) return [];
+              if (items.length < 2) continue;
+              if (size <= PREFIX_BYTES) {
+                  addGroup(items, size, prefix);
+                  continue;
+              }
+              const tails = new Map<string, ScanItem[]>();
+              if (size > 2 * PREFIX_BYTES) {
+                  // Common headers are cheap to match; a tail sample can avoid a full read.
+                  await pool(items, 4, ctx.signal, async (item) => {
+                      progress(item.path);
+                      const tail = await prefixFingerprint(item.path, size, ctx.signal, size - PREFIX_BYTES);
+                      if (!tail) return;
+                      const group = tails.get(tail);
+                      if (group) group.push(item);
+                      else tails.set(tail, [item]);
+                  });
+                  items.length = 0;
+              } else {
+                  tails.set("", items);
+              }
+              for (const [tail, matches] of tails) {
+                  tails.delete(tail);
+                  if (ctx.signal.aborted) return [];
+                  if (matches.length < 2) continue;
+                  const hashes = new Map<string, ScanItem[]>();
+                  await pool(matches, 4, ctx.signal, async (item) => {
+                      progress(item.path);
+                      const hash = await fingerprint(item.path, size, ctx.signal);
+                      if (!hash) return;
+                      const group = hashes.get(hash);
+                      if (group) group.push(item);
+                      else hashes.set(hash, [item]);
+                  });
+                  matches.length = 0;
+                  for (const [hash, group] of hashes) addGroup(group, size, hash);
               }
           }
       }
 
-      if (ctx.signal.aborted) return [];
-
-      // Step 4: Final grouping by size + full SHA-256 content hash
-      const finalBuckets = new Map<string, ScanItem[]>();
-      for (const {c, fullHash} of finalHashed) {
-          const key = `${c.item.size}:${fullHash}`;
-          const group = finalBuckets.get(key) ?? [];
-      group.push({
-          ...c.item,
-        groupKey: key,
-          groupLabel: `${path.basename(c.file)} · ${fullHash.slice(0, 8)}`,
-      });
-          finalBuckets.set(key, group);
-    }
-
-      const duplicateGroups = [...finalBuckets.values()]
-      .filter((group) => group.length > 1)
-          .sort((a, b) => (b[0]?.size ?? 0) - (a[0]?.size ?? 0));
-
-      return duplicateGroups.flat();
+      return ctx.signal.aborted ? [] : results.sort((a, b) => b.size - a.size);
   },
 };
